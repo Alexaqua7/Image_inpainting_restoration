@@ -5,7 +5,7 @@ from model.UNetGenerator import weights_init_normal
 import datetime
 import wandb
 
-def train(train_dataloader, epochs, generator, discriminator, optimizer_G, optimizer_D, criterion_GAN, criterion_pixelwise, lambda_pixel, model_save_dir = './checkpoints'):
+def train(train_dataloader, epochs, generator, discriminator, optimizer_G, optimizer_D, scheduler_G, scheduler_D, criterion_GAN, criterion_pixelwise, lambda_pixel, model_save_dir = './checkpoints'):
     # 학습
     best_loss = float("inf")
     for epoch in range(1, epochs + 1):
@@ -28,6 +28,7 @@ def train(train_dataloader, epochs, generator, discriminator, optimizer_G, optim
             loss_G = loss_GAN + lambda_pixel * loss_pixel
             loss_G.backward()
             optimizer_G.step()
+            scheduler_G.step()
 
             # Discriminator 훈련
             optimizer_D.zero_grad()
@@ -38,6 +39,7 @@ def train(train_dataloader, epochs, generator, discriminator, optimizer_G, optim
             loss_D = 0.5 * (loss_real + loss_fake)
             loss_D.backward()
             optimizer_D.step()
+            scheduler_D.step()
 
             # 진행 상황 출력
             progress_bar.set_postfix(loss_D=f"{loss_D.item():.4f}", loss_G=f"{loss_G.item():.4f}", time=datetime.datetime.now().strftime("%H:%M:%S"))

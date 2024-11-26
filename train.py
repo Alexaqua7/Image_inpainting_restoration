@@ -9,6 +9,8 @@ from model.UNetGenerator import UNetGenerator, PatchGANDiscriminator
 from utils.trainer import train
 from utils.utils import seed_everything
 import wandb
+from torch.optim.lr_scheduler import CosineAnnealingLR
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Image_Inpainting_Restoration')
     # 경로 설정
@@ -21,7 +23,7 @@ def parse_args():
     parser.add_argument('--seed', type=int, default=42, help='Seed 설정')
     parser.add_argument('--wandb_project', type=str, default='Image-Inpainting', help='WandB Project 이름')
     parser.add_argument('--wandb_entity', type=str, default='alexseo-inha-university', help='WandB Entity 이름')
-    parser.add_argument('--wandb_run_name', type=str, default='Baseline', help='WandB Run name 설정')
+    parser.add_argument('--wandb_run_name', type=str, default='Baseline_with_Scheduler', help='WandB Run name 설정')
 
     args = parser.parse_args()
     return args
@@ -67,8 +69,11 @@ def main():
     optimizer_G = optim.Adam(generator.parameters(), lr = args.lr)
     optimizer_D = optim.Adam(discriminator.parameters(), lr = args.lr) 
 
+    scheduler_G = CosineAnnealingLR(optimizer_G, T_max=args.num_epoch * len(train_dataloader), eta_min=0)
+    scheduler_D = CosineAnnealingLR(optimizer_D, T_max=args.num_epoch * len(train_dataloader), eta_min=0)
+
     train(train_dataloader=train_dataloader, epochs=args.num_epoch, generator=generator, discriminator=discriminator, optimizer_G=optimizer_G, 
-          optimizer_D=optimizer_D, criterion_GAN=criterion_GAN, criterion_pixelwise=criterion_pixelwise, 
+          optimizer_D=optimizer_D, scheduler_G=scheduler_G, scheduler_D=scheduler_D, criterion_GAN=criterion_GAN, criterion_pixelwise=criterion_pixelwise, 
           lambda_pixel=lambda_pixel, model_save_dir = args.model_save_dir)
 if __name__ == '__main__':
     main()
