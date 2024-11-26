@@ -17,7 +17,7 @@ def parse_args():
     parser.add_argument('--lr', type=float, default=3e-4, help='Learning Rate 설정')
     parser.add_argument('--batch_size', type=int, default=16, help='Batch Size 설정')
     parser.add_argument('--model_save_dir', type=str, default='./saved_models', help='Model이 저장될 경로')
-    parser.add_argument('--num_epoch', type=int, default=10, help='Epoch 수 설정')
+    parser.add_argument('--num_epoch', type=int, default=50, help='Epoch 수 설정')
     parser.add_argument('--seed', type=int, default=42, help='Seed 설정')
 
     args = parser.parse_args()
