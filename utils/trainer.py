@@ -3,6 +3,7 @@ import torch
 from tqdm import tqdm
 from model.UNetGenerator import weights_init_normal
 import datetime
+import wandb
 
 def train(train_dataloader, epochs, generator, discriminator, optimizer_G, optimizer_D, criterion_GAN, criterion_pixelwise, lambda_pixel, model_save_dir = './checkpoints'):
     # 학습
@@ -42,6 +43,19 @@ def train(train_dataloader, epochs, generator, discriminator, optimizer_G, optim
             progress_bar.set_postfix(loss_D=f"{loss_D.item():.4f}", loss_G=f"{loss_G.item():.4f}", time=datetime.datetime.now().strftime("%H:%M:%S"))
             # print(f"[Epoch {epoch}/{epochs}] [Batch {i}/{len(train_dataloader)}] [D loss: {loss_D.item()}] [G loss: {loss_G.item()}]")
 
+            try:
+                current_lr_G = optimizer_G.param_groups[0]['lr']
+                current_lr_D = optimizer_D.param_groups[0]['lr']
+                wandb.log({
+                    "train/loss_D": loss_D.item(),
+                    "train/loss_G": loss_G.item(),
+                    "train/step": epoch * len(train_dataloader) + i,
+                    "train/epoch": epoch,
+                    "train/lr_D":current_lr_D,
+                    "train/lr_G":current_lr_G,
+                })
+            except:
+                pass
             # 현재 에포크에서의 손실이 best_loss보다 작으면 모델 저장
             if loss_G.item() < best_loss:
                 best_loss = loss_G.item()

@@ -8,7 +8,7 @@ import argparse
 from model.UNetGenerator import UNetGenerator, PatchGANDiscriminator
 from utils.trainer import train
 from utils.utils import seed_everything
-
+import wandb
 def parse_args():
     parser = argparse.ArgumentParser(description='Image_Inpainting_Restoration')
     # 경로 설정
@@ -19,6 +19,9 @@ def parse_args():
     parser.add_argument('--model_save_dir', type=str, default='./saved_models', help='Model이 저장될 경로')
     parser.add_argument('--num_epoch', type=int, default=50, help='Epoch 수 설정')
     parser.add_argument('--seed', type=int, default=42, help='Seed 설정')
+    parser.add_argument('--wandb_project', type=str, default='Image-Inpainting', help='WandB Project 이름')
+    parser.add_argument('--wandb_entity', type=str, default='alexseo-inha-university', help='WandB Entity 이름')
+    parser.add_argument('--wandb_run_name', type=str, default='Baseline', help='WandB Run name 설정')
 
     args = parser.parse_args()
     return args
@@ -32,7 +35,13 @@ def main():
         transforms.ToTensor(),
         transforms.Normalize([0.5], [0.5])
     ])
-
+    # Wandb initalize
+    wandb.init(
+        project=args.wandb_project,
+        entity=args.wandb_entity,
+        name=args.wandb_run_name,
+        config=vars(args)
+    )
     # 데이터셋 및 DataLoader 생성
     train_dataset = CustomDataset(damage_dir=args.damage_dir, 
                                   origin_dir=args.origin_dir, 
