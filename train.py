@@ -33,7 +33,7 @@ def main():
     seed_everything(args.seed)
     # 데이터 전처리 설정
     transform = transforms.Compose([
-        transforms.Resize((256, 256)),
+        transforms.Resize((512,512)),
         transforms.ToTensor(),
         transforms.Normalize([0.5], [0.5])
     ])
@@ -51,7 +51,7 @@ def main():
     train_dataloader = DataLoader(train_dataset, 
                                   batch_size=args.batch_size, 
                                   shuffle=True, 
-                                  num_workers=1)
+                                  num_workers=4)
 
     # 모델 저장을 위한 디렉토리 생성
     os.makedirs(args.model_save_dir, exist_ok=True)
