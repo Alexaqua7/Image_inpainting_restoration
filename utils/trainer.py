@@ -8,14 +8,14 @@ import wandb
 def train(train_dataloader, epochs, generator, discriminator, optimizer_G, optimizer_D, scheduler_G, scheduler_D, criterion_GAN, criterion_pixelwise, lambda_pixel, model_save_dir = './checkpoints'):
     # 학습
     best_loss = float("inf")
+    generator, discriminator = generator.to(device), discriminator.to(device)
+    generator.apply(weights_init_normal).to(device)
+    discriminator.apply(weights_init_normal).to(device)
     for epoch in range(1, epochs + 1):
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         print("Using device:", device)
         progress_bar = tqdm(enumerate(train_dataloader), total=len(train_dataloader), desc=f"Training: Epoch [{epoch}/{epochs}]")
         for i, batch in progress_bar:
-            generator, discriminator = generator.to(device), discriminator.to(device)
-            generator.apply(weights_init_normal).to(device)
-            discriminator.apply(weights_init_normal).to(device)
             real_A = batch['A'].to(device)
             real_B = batch['B'].to(device)
 
@@ -58,9 +58,9 @@ def train(train_dataloader, epochs, generator, discriminator, optimizer_G, optim
                 })
             except:
                 pass
-            # 현재 에포크에서의 손실이 best_loss보다 작으면 모델 저장
-            if loss_G.item() < best_loss:
-                best_loss = loss_G.item()
-                torch.save(generator.state_dict(), os.path.join(model_save_dir, "best_generator.pth"))
-                torch.save(discriminator.state_dict(), os.path.join(model_save_dir, "best_discriminator.pth"))
-                print(f"Best model saved at epoch {epoch}, batch {i} with G loss: {loss_G.item()} and D loss: {loss_D.item()}")
+        # 현재 에포크에서의 손실이 best_loss보다 작으면 모델 저장
+        if loss_G.item() < best_loss:
+            best_loss = loss_G.item()
+            torch.save(generator.state_dict(), os.path.join(model_save_dir, "best_generator.pth"))
+            torch.save(discriminator.state_dict(), os.path.join(model_save_dir, "best_discriminator.pth"))
+            print(f"Best model saved at epoch {epoch}, batch {i} with G loss: {loss_G.item()} and D loss: {loss_D.item()}")
