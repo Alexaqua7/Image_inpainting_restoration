@@ -31,22 +31,25 @@ def train(train_dataloader, epochs, unet1, unet2, optimizer_U1, optimizer_U2, sc
         count = 0
 
         for i, batch in progress_bar:
-            generator, discriminator = generator.to(device), discriminator.to(device)
-            generator.apply(weights_init_normal).to(device)
-            discriminator.apply(weights_init_normal).to(device)
-            real_A = batch['A'].to(device)
-            real_B = batch['B'].to(device)
+            unet1.train()
+            unet2.train()
+            optimizer_U1.zero_grad()
+            optimizer_U2.zero_grad()
 
-            # Generator 훈련
-            optimizer_G.zero_grad()
-            fake_B = generator(real_A)
-            pred_fake = discriminator(fake_B, real_A)
-            loss_GAN = criterion_GAN(pred_fake, torch.ones_like(pred_fake).to(device))
-            loss_pixel = criterion_pixelwise(fake_B, real_B)
-            loss_G = loss_GAN + lambda_pixel * loss_pixel
-            loss_G.backward()
-            optimizer_G.step()
-            scheduler_G.step()
+            # 데이터 불러오기
+            grayscale_img = batch['grayscale'].to(device)  # 흑백 이미지 (input to U-Net1)
+            color_gt = batch['color_gt'].to(device)        # 색상 이미지 (ground truth for U-Net2)
+            mask_gt = batch['mask_gt'].to(device)          # 복원할 마스크 이미지 (ground truth for U-Net1)
+
+            # U-Net1: 마스크 복원
+            with torch.cuda.amp.autocast():
+                mask_pred = unet1(grayscale_img)
+                loss_mask = criterion_pixelwise(mask_pred, mask_gt)
+            
+            scaler.scale(loss_mask).backward()  # Mask 손실만 backward
+            scaler.step(optimizer_U1)
+            scaler.update()
+            scheduler_U1.step()
 
             # U-Net2: 색상 복원
             with torch.cuda.amp.autocast():
@@ -74,25 +77,26 @@ def train(train_dataloader, epochs, unet1, unet2, optimizer_U1, optimizer_U2, sc
             })
 
             # 진행 상황 출력
-            progress_bar.set_postfix(loss_D=f"{loss_D.item():.4f}", loss_G=f"{loss_G.item():.4f}", time=datetime.datetime.now().strftime("%H:%M:%S"))
-            # print(f"[Epoch {epoch}/{epochs}] [Batch {i}/{len(train_dataloader)}] [D loss: {loss_D.item()}] [G loss: {loss_G.item()}]")
+            progress_bar.set_postfix(loss_mask=f"{loss_mask.item():.4f}", loss_color=f"{loss_color.item():.4f}")
 
-            try:
-                current_lr_G = optimizer_G.param_groups[0]['lr']
-                current_lr_D = optimizer_D.param_groups[0]['lr']
-                wandb.log({
-                    "train/loss_D": loss_D.item(),
-                    "train/loss_G": loss_G.item(),
-                    "train/step": epoch * len(train_dataloader) + i,
-                    "train/epoch": epoch,
-                    "train/lr_D":current_lr_D,
-                    "train/lr_G":current_lr_G,
-                })
-            except:
-                pass
-            # 현재 에포크에서의 손실이 best_loss보다 작으면 모델 저장
-            if loss_G.item() < best_loss:
-                best_loss = loss_G.item()
-                torch.save(generator.state_dict(), os.path.join(model_save_dir, "best_generator.pth"))
-                torch.save(discriminator.state_dict(), os.path.join(model_save_dir, "best_discriminator.pth"))
-                print(f"Best model saved at epoch {epoch}, batch {i} with G loss: {loss_G.item()} and D loss: {loss_D.item()}")
+        # 에폭 단위 평균 손실 계산
+        avg_loss_mask = total_loss_mask / count
+        avg_loss_color = total_loss_color / count
+        loss_sum = avg_loss_mask + avg_loss_color  # 두 손실의 합
+
+        # wandb 로그 기록 (에폭 단위)
+        wandb.log({
+            "epoch": epoch,
+            "metrics/avg_loss_mask": avg_loss_mask,
+            "metrics/avg_loss_color": avg_loss_color,
+            "metrics/loss_sum": loss_sum,
+        })
+
+        print(f"[Epoch {epoch}/{epochs}] Loss Sum: {loss_sum:.4f} (Mask: {avg_loss_mask:.4f}, Color: {avg_loss_color:.4f})")
+
+        # 최적 모델 저장 (손실 합 최소화 기준)
+        if loss_sum < best_loss_sum:
+            best_loss_sum = loss_sum
+            os.makedirs(model_save_dir, exist_ok=True)
+            torch.save(unet1.state_dict(), os.path.join(model_save_dir, "best_unet1.pth"))
+            torch.save(unet2.state_dict(), os.path.join(model_save_dir, "best_unet2.pth"))
