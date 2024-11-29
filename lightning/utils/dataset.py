@@ -9,9 +9,10 @@ from PIL import Image
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
 import os
+import torch
 
 class CustomImageDataset(Dataset):
-    def __init__(self, df, data_dir='../data/train_gt', mode='train', min_polygon_bbox_size=50):
+    def __init__(self, df, data_dir='../../data/train_gt', mode='train', min_polygon_bbox_size=50):
         self.df = df
         self.data_dir = data_dir
         self.mode = mode
@@ -92,3 +93,44 @@ def get_input_image(image, min_polygon_bbox_size=50):
         'image_gray':image_gray,
         'image_gray_masked':image_gray_masked
     }
+
+class CollateFn:
+    def __init__(self, mean=0.5, std=0.225, mode='train'):
+        self.mode = mode
+        self.mean = mean
+        self.std = std
+
+    def __call__(self, examples):
+        if self.mode =='train' or self.mode=='valid':
+            # Initialize lists to store each component of the batch
+            masks= []
+            images_gray = []
+            images_gray_masked = []
+            images_gt = []
+    
+            for example in examples:
+                # Assuming each example is a dictionary with keys 'mask', 'image_gray', 'image_gray_masked', 'image_gt'
+                masks.append(example['mask'])
+                images_gray.append(self.normalize_image(example['image_gray']))
+                images_gray_masked.append(self.normalize_image(example['image_gray_masked']))
+                images_gt.append(self.normalize_image(np.array(example['image_gt'])))
+
+            return {
+                'masks': torch.from_numpy(np.stack(masks)).long(),
+                'images_gray': torch.from_numpy(np.stack(images_gray)).unsqueeze(1).float(),
+                'images_gray_masked': torch.from_numpy(np.stack(images_gray_masked)).unsqueeze(1).float(),
+                'images_gt': torch.from_numpy(np.stack(images_gt)).permute(0,3,1,2).float()
+            }
+
+        elif self.mode == 'test':
+            images_gray_masked = []
+            for example in examples:
+                images_gray_masked.append(self.normalize_image(example['image_gray_masked']))
+            return {
+                # 'images_gray_masked': torch.from_numpy(np.stack(images_gray_masked)).unsqueeze(1).float(),
+                'images_gray_masked': torch.from_numpy(np.stack(images_gray_masked)).permute(0,3,1,2).float(),
+
+            }
+        
+    def normalize_image(self, image):
+        return (np.array(image)/255-self.mean)/self.std

@@ -6,19 +6,22 @@ import torch
 import cv2
 import zipfile
 import torchvision.transforms as transforms
+import segmentation_models_pytorch as smp
 
 # 이미지 로드 및 전처리
 def load_image(image_path, transform):
-    image = Image.open(image_path).convert("RGB")
+    image = Image.open(image_path).convert("L")
     image = transform(image)
     image = image.unsqueeze(0)  # 배치 차원을 추가합니다.
     return image
 
-def test(model, transform, test_dir, submission_dir):
+def test(model1, model2, transform, test_dir, submission_dir):
     device = 'cuda'
     # 모델 로드 및 설정
-    model = model.to(device)
-    model.eval()
+    model1 = model1.to(device)
+    model2 = model2.to(device)
+    model1.eval()
+    model2.eval()
     # 파일 리스트 불러오기
     test_images = sorted(os.listdir(test_dir))
 
@@ -31,7 +34,8 @@ def test(model, transform, test_dir, submission_dir):
 
         with torch.no_grad():
             # 모델로 예측
-            pred_image = model(test_image)
+            pred_image = model1(test_image)
+            pred_image = model2(pred_image)
             pred_image = pred_image.cpu().squeeze(0)  # 배치 차원 제거
             pred_image = pred_image * 0.5 + 0.5  # 역정규화
             pred_image = pred_image.numpy().transpose(1, 2, 0)  # HWC로 변경
@@ -67,14 +71,28 @@ def main():
     args = parse_args()
     generator_path = os.path.join(args.model_save_dir, "best_generator.pth")
     transform = transforms.Compose([
-        transforms.Resize((256, 256)),
+        transforms.Resize((512, 512)),
         transforms.ToTensor(),
         transforms.Normalize([0.5], [0.5])
     ])
-    model = UNetGenerator()
-    model.load_state_dict(torch.load(generator_path))
+    model1 = smp.UnetPlusPlus(
+    encoder_name="resnet34",        
+    encoder_weights="imagenet",     
+    in_channels=1,                  
+    classes=1,                      
+    )
+
+# gray -> color
+    model2 = smp.UnetPlusPlus(
+        encoder_name="resnet34",        
+        encoder_weights="imagenet",     
+        in_channels=1,                  
+        classes=3,                      
+    )
+    model1.load_state_dict(torch.load('./saved_models/best_unet1.pth'))
+    model2.load_state_dict(torch.load('./saved_models/best_unet2.pth'))
     os.makedirs(args.submission_dir, exist_ok=True)
-    test(model, transform, args.test_dir, args.submission_dir)
+    test(model1, model2, transform, args.test_dir, args.submission_dir)
 
 if __name__ == '__main__':
     main()

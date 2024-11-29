@@ -9,3 +9,4 @@ def split_dataset(seed, n_split, train_df):
         # valid_fold_df = valid_fold_df.drop_duplicates('label') # for fast validation
         # train_fold_df = pd.concat([train_fold_df,train_df_outlier],axis=0).reset_index(drop=True)
         break
+    return train_fold_df, valid_fold_df
