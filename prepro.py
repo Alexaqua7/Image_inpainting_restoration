@@ -2,7 +2,7 @@ import os
 from PIL import Image
 
 # 기존 폴더 경로와 새 폴더 경로
-data_dir = "C:/Users/User/Desktop/DACON_1/data"
+data_dir = "../data"
 train_gt_dir = os.path.join(data_dir, "train_gt")
 grayscale_dir = os.path.join(data_dir, "train_gt_grayscale")
 

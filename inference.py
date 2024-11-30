@@ -72,12 +72,12 @@ def main():
     model1_path = os.path.join(args.model_save_dir, "best_unet1.pth")
     model2_path = os.path.join(args.model_save_dir, "best_unet2.pth")
     transform = transforms.Compose([
-        transforms.Resize((256, 256)),
+        transforms.Resize((512,512)),
         transforms.ToTensor(),
         transforms.Normalize([0.5], [0.5])
     ])
-    model1 = smp.UnetPlusPlus(encoder_name="resnet34", encoder_weights="imagenet", in_channels=1, classes=1)  # 흑백 -> 마스크 복원
-    model2 = smp.UnetPlusPlus(encoder_name="resnet34", encoder_weights="imagenet", in_channels=1, classes=3)  # 흑백+복원 -> 색상 복원
+    model1 = smp.UPerNet(encoder_name="tu-hrnet_w64", encoder_weights="imagenet", in_channels=1, classes=1)  # 흑백 -> 마스크 복원
+    model2 = smp.UPerNet(encoder_name="resnet50", encoder_weights="imagenet", in_channels=1, classes=3)  # 흑백+복원 -> 색상 복원
     model1.load_state_dict(torch.load(model1_path))
     model2.load_state_dict(torch.load(model2_path))
     os.makedirs(args.submission_dir, exist_ok=True)
