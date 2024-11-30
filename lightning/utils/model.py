@@ -5,6 +5,7 @@ import torch.nn.functional as F
 import wandb
 import numpy as np
 import lightning as L
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 class LitIRModel(L.LightningModule):
     def __init__(self, model_1, model_2, image_mean=0.5, image_std=0.225):
@@ -26,8 +27,19 @@ class LitIRModel(L.LightningModule):
         return image_restored
     
     def configure_optimizers(self):
-        opt = torch.optim.AdamW(self.parameters(), lr=1e-5)
-        return opt
+        optimizer = torch.optim.AdamW(self.parameters(), lr=1e-4)
+        total_epochs = self.trainer.max_epochs if self.trainer is not None else 50  # 기본값 100
+
+        # 2. CosineAnnealing 스케줄러 정의
+        scheduler = CosineAnnealingLR(optimizer, T_max=total_epochs, eta_min=1e-6)
+        return {
+        'optimizer': optimizer,
+        'lr_scheduler': {
+            'scheduler': scheduler,
+            'monitor': 'val_score',  # (Optional) 성능 지표를 모니터링하려면 추가
+            'interval': 'epoch',    # 학습률 업데이트 주기 (에포크마다)
+        }
+    }
 
     def training_step(self, batch, batch_idx):
         masks, images_gray_masked, images_gray, images_gt = batch['masks'], batch['images_gray_masked'], batch['images_gray'], batch['images_gt']

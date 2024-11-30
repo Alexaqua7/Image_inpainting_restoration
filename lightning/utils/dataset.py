@@ -36,7 +36,7 @@ class CustomImageDataset(Dataset):
             image_input = self.load_input_image(img_path)
             return image_input
         elif self.mode == 'test':
-            image = Image.open(img_path)
+            image = Image.open(img_path).convert('L')
             return {
                 'image_gray_masked':image
             }
@@ -127,8 +127,8 @@ class CollateFn:
             for example in examples:
                 images_gray_masked.append(self.normalize_image(example['image_gray_masked']))
             return {
-                # 'images_gray_masked': torch.from_numpy(np.stack(images_gray_masked)).unsqueeze(1).float(),
-                'images_gray_masked': torch.from_numpy(np.stack(images_gray_masked)).permute(0,3,1,2).float(),
+                'images_gray_masked': torch.from_numpy(np.stack(images_gray_masked)).unsqueeze(1).float(),
+                # 'images_gray_masked': torch.from_numpy(np.stack(images_gray_masked)).permute(0,3,1,2).float(),
 
             }
         
