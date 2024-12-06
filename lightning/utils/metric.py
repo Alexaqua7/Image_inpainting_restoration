@@ -1,5 +1,7 @@
 from skimage.metrics import structural_similarity as ski_ssim
 import cv2
+import numpy as np
+
 
 def get_ssim_score(true, pred):
     # 전체 RGB 이미지를 사용해 SSIM 계산 (channel_axis=-1)
@@ -10,6 +12,9 @@ def get_masked_ssim_score(true, pred, mask):
     # 손실 영역의 좌표에서만 RGB 채널별 픽셀 값 추출
     true_masked_pixels = true[mask > 0]
     pred_masked_pixels = pred[mask > 0]
+
+    if np.sum(mask) == 0 or true_masked_pixels.size == 0 or pred_masked_pixels.size == 0:
+        return 0.0
     
     # 손실 영역 픽셀만으로 SSIM 계산 (채널축 사용)
     ssim_value = ski_ssim(

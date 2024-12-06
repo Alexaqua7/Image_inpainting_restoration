@@ -15,6 +15,10 @@ class LitIRModel(L.LightningModule):
         self.image_mean=image_mean
         self.image_std=image_std
 
+        # Validation metrics storage
+        self.val_metrics = {"val_score": 0, "val_total_ssim_score": 0, "val_masked_ssim_score": 0, "val_hist_sim_score": 0}
+        self.val_count = 0  # Batch count for averaging
+
     def forward(self, images_gray_masked):
         images_gray_restored = self.model_1(images_gray_masked)+images_gray_masked
         images_restored = self.model_2(images_gray_restored)
@@ -42,6 +46,9 @@ class LitIRModel(L.LightningModule):
     }
 
     def training_step(self, batch, batch_idx):
+        # 데이터셋 업데이트 로직 (현재 epoch과 총 epoch 전달)
+        if hasattr(self.trainer.datamodule, 'update_bbox_size'):
+            self.trainer.datamodule.update_bbox_size(self.current_epoch, self.trainer.max_epochs)
         masks, images_gray_masked, images_gray, images_gt = batch['masks'], batch['images_gray_masked'], batch['images_gray'], batch['images_gt']
         images_gray_restored, images_restored = self(images_gray_masked)
         
@@ -85,15 +92,14 @@ class LitIRModel(L.LightningModule):
         self.log(f"val_total_ssim_score", total_ssim_score, on_step=False, on_epoch=True)
         self.log(f"val_masked_ssim_score", masked_ssim_score, on_step=False, on_epoch=True)
         self.log(f"val_hist_sim_score", hist_sim_score, on_step=False, on_epoch=True)
-        try:
-            wandb.log({
-                        "valid/score": score,
-                        "valid/total_ssim_score": total_ssim_score,
-                        "valid/masked_ssim_score": masked_ssim_score,
-                        "valid/hist_sim_score": hist_sim_score,
-                    })
-        except:
-            pass
+
+        # Batch-level 결과를 저장
+        self.val_metrics["val_score"] += score
+        self.val_metrics["val_total_ssim_score"] += total_ssim_score
+        self.val_metrics["val_masked_ssim_score"] += masked_ssim_score
+        self.val_metrics["val_hist_sim_score"] += hist_sim_score
+        self.val_count += 1  # 배치 수 증가
+
         return score
 
     def predict_step(self, batch, batch_idx):
@@ -102,3 +108,27 @@ class LitIRModel(L.LightningModule):
         images_restored = self.unnormalize(images_restored, round=True)
         images_restored_np = images_restored.detach().cpu().permute(0,2,3,1).float().numpy().astype(np.uint8)
         return images_restored_np
+    
+    def on_validation_epoch_end(self):
+        # Validation 결과를 평균 내고 wandb에 기록
+        avg_val_metrics = {key: value / self.val_count for key, value in self.val_metrics.items()}
+
+        self.log("val_score", avg_val_metrics["val_score"], on_epoch=True)
+        self.log("val_total_ssim_score", avg_val_metrics["val_total_ssim_score"], on_epoch=True)
+        self.log("val_masked_ssim_score", avg_val_metrics["val_masked_ssim_score"], on_epoch=True)
+        self.log("val_hist_sim_score", avg_val_metrics["val_hist_sim_score"], on_epoch=True)
+
+        try:
+            wandb.log({
+                "valid/score": avg_val_metrics["val_score"],
+                "valid/total_ssim_score": avg_val_metrics["val_total_ssim_score"],
+                "valid/masked_ssim_score": avg_val_metrics["val_masked_ssim_score"],
+                "valid/hist_sim_score": avg_val_metrics["val_hist_sim_score"],
+                "valid/epoch": self.current_epoch,
+            })
+        except Exception as e:
+            print(f"Error logging to wandb: {e}")
+
+        # Metrics 초기화
+        self.val_metrics = {key: 0 for key in self.val_metrics}
+        self.val_count = 0
