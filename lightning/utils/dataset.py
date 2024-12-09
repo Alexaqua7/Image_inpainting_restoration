@@ -145,32 +145,9 @@ class StratifiedImageDataset(Dataset):
             image_input = get_stratified_input_image(
                 image, 
                 min_polygon_bbox_size=self.updated_min_size, 
-                max_polygon_bbox_size=self.updated_max_size,
+                max_polygon_bbox_size=self.max_polygon_bbox_size,
                 max_points=self.updated_points
             )
-
-            # Apply transform to image_gray_masked if available
-            if self.transform:
-                image_gray_masked = image_input['image_gray_masked']
-                image_gray_masked = np.array(image_gray_masked)
-                image_gray_masked = np.expand_dims(image_gray_masked, axis=-1)  # Add channel dimension
-                transformed = self.transform(image=image_gray_masked)
-                image_gray_masked = transformed["image"]
-                image_gray_masked = np.squeeze(image_gray_masked, axis=-1)  # Remove channel dimension
-
-                # # Save the transformed image to check if augmentation is working
-                # save_path = 'augmented_images'
-                # os.makedirs(save_path, exist_ok=True)
-                # save_name = f"augmented_{idx}.png"
-                # transformed_image = Image.fromarray(image_gray_masked.astype(np.uint8))
-                # transformed_image.save(os.path.join(save_path, save_name))
-            
-                return {
-                    'image_gt': image_input['image_gt'],
-                    'mask': image_input['mask'],
-                    'image_gray': image_input['image_gray'],
-                    'image_gray_masked': Image.fromarray(image_gray_masked),
-                }
 
             return image_input
 
@@ -205,6 +182,7 @@ class StratifiedImageDataset(Dataset):
         # 크기 업데이트
         # self.updated_min_size = max(self.min_polygon_bbox_size, min(new_min_size, self.max_polygon_bbox_size))
         self.updated_max_size = min(new_max_size, self.max_polygon_bbox_size)
+        print(f"max_size has changed to {self.updated_max_size} in Epoch {epoch}")
         self.updated_points = min(self.max_points, max(3, int(self.max_points*progress)))
 
 
