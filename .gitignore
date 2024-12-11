@@ -7,3 +7,5 @@
 *.json
 *.yaml
 *.txt
+*.csv
+*.ckpt
