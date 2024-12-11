@@ -145,7 +145,7 @@ class StratifiedImageDataset(Dataset):
             image_input = get_stratified_input_image(
                 image, 
                 min_polygon_bbox_size=self.updated_min_size, 
-                max_polygon_bbox_size=self.max_polygon_bbox_size,
+                max_polygon_bbox_size=self.updated_max_size,
                 max_points=self.updated_points
             )
 
@@ -173,14 +173,11 @@ class StratifiedImageDataset(Dataset):
             return  # 조건에 맞지 않으면 업데이트 건너뜀
 
         progress = epoch / num_epoch  # 전체 진행률 (0.0 ~ 1.0)
-        # range_diff = self.max_polygon_bbox_size - self.min_polygon_bbox_size
 
-        # 새로운 min/max 크기 계산
-        # new_min_size = self.min_polygon_bbox_size + int(range_diff * progress / 2)
+        # 새로운 max 크기 계산
         new_max_size = self.updated_max_size + 50 #int(range_diff * progress)
         
         # 크기 업데이트
-        # self.updated_min_size = max(self.min_polygon_bbox_size, min(new_min_size, self.max_polygon_bbox_size))
         self.updated_max_size = min(new_max_size, self.max_polygon_bbox_size)
         print(f"max_size has changed to {self.updated_max_size} in Epoch {epoch}")
         self.updated_points = min(self.max_points, max(3, int(self.max_points*progress)))
