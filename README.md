@@ -22,7 +22,7 @@ project_root/
 ├── Image_inpainting_restoration/
 │   └── lightning
 │      ├── train.py
-│      ├── train_curriculum.py
+│      ├── original.py
 │      ├── inference.py
 │      └── utils/
 │          ├── dataset.py
