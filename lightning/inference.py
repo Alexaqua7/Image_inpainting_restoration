@@ -17,10 +17,10 @@ import torch
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Image_Inpainting_Restoration')
-    parser.add_argument('--model', type=str, default='./checkpoint/smp-unetpp-maxvit_base_tf_512-efficientnetb7-epoch=03-val_score=0.6539.ckpt', help='Path for model')
+    parser.add_argument('--model', type=str, default='./checkpoint/curriculum4Q.ckpt', help='Path for model')
     parser.add_argument('--test_data_dir', type=str, default='../../data/test_input', help='Test Data Directory 경로를 설정')
     parser.add_argument('--batch_size', type=int, default=2, help='Batch size 설정')
-    parser.add_argument('--submission_dir', type=str, default='./submission6539', help='Submission directory 설정')
+    parser.add_argument('--submission_dir', type=str, default='./submission', help='Submission directory 설정')
 
     args = parser.parse_args()
     return args
