@@ -261,7 +261,7 @@ def parse_args4():
     parser.add_argument('--val_data_dir', type=str, default=f'../../data/valid_input', help='Validation data 경로 설정')
     parser.add_argument('--image_mean', type=float, default=0.5, help='Image pixel의 mean value')
     parser.add_argument('--image_std', type=float, default=0.225, help='Image pixel의 std value')
-    parser.add_argument('--num_epoch', type=int, default=4, help='Epoch 수 설정')
+    parser.add_argument('--num_epoch', type=int, default=15, help='Epoch 수 설정')
     parser.add_argument('--seed', type=int, default=42, help='Seed 설정')
     parser.add_argument('--resume', type=str, default='./checkpoint/curriculum3Q.ckpt', help='모델 학습을 Resume하려면 Model 주소를 입력하세요')
     parser.add_argument('--wandb_project', type=str, default='Image-Inpainting', help='WandB Project 이름')

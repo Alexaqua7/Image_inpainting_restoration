@@ -17,10 +17,10 @@ import torch
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Image_Inpainting_Restoration')
-    parser.add_argument('--model', type=str, default='./checkpoint/smp-unetpp-hrnet_w64-epoch=06-val_score=0.5535.ckpt', help='Path for model')
+    parser.add_argument('--model', type=str, default='./checkpoint/smp-unetpp-maxvit_base_tf_512-efficientnetb7-epoch=03-val_score=0.6539.ckpt', help='Path for model')
     parser.add_argument('--test_data_dir', type=str, default='../../data/test_input', help='Test Data Directory 경로를 설정')
     parser.add_argument('--batch_size', type=int, default=2, help='Batch size 설정')
-    parser.add_argument('--submission_dir', type=str, default='./submission', help='Submission directory 설정')
+    parser.add_argument('--submission_dir', type=str, default='./submission6539', help='Submission directory 설정')
 
     args = parser.parse_args()
     return args
@@ -32,7 +32,7 @@ def main():
     test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, collate_fn=CollateFn(mode='test'))
 
     model_1 = smp.UnetPlusPlus(
-    encoder_name="tu-hrnet_w64",        
+    encoder_name="tu-maxvit_base_tf_512",        
     encoder_weights="imagenet",     
     in_channels=1,                  
     classes=1,                      
@@ -40,7 +40,7 @@ def main():
 
     # gray -> color
     model_2 = smp.UnetPlusPlus(
-        encoder_name="resnet50",        
+        encoder_name="efficientnet-b7",        
         encoder_weights="imagenet",     
         in_channels=1,                  
         classes=3,                      
@@ -56,14 +56,14 @@ def main():
         monitor='val_score',
         mode='max',
         dirpath='./checkpoint/',
-        filename=f'smp-unetpp-hrnet_w64'+'-{epoch:02d}-{val_score:.4f}',
+        filename=f'smp-segformer-hrnet_w64-efficientnetb7'+'-{epoch:02d}-{val_score:.4f}',
         save_top_k=1,
         save_weights_only=True,
         verbose=True
     )
     earlystopping_callback = EarlyStopping(monitor="val_score", mode="max", patience=3)
 
-    trainer = L.Trainer(max_epochs=100, precision='16-mixed', callbacks=[checkpoint_callback, earlystopping_callback], detect_anomaly=False)
+    trainer = L.Trainer(max_epochs=100, precision='bf16-mixed', callbacks=[checkpoint_callback, earlystopping_callback], detect_anomaly=False, inference_mode='predict')
     predictions = trainer.predict(lit_ir_model, test_dataloader)
     predictions = np.concatenate(predictions)
     current_time = time.strftime("%m-%d_%H-%M-%S")
@@ -77,7 +77,6 @@ def main():
         save_path = os.path.join(args.submission_dir, input_image_name)  # 올바른 경로 생성
         image_pred = Image.fromarray(predictions[idx])
         image_pred.save(save_path, "PNG")
-        print(f"Image saved to {save_path}")
 
     # Step 3: Compress the directory into a ZIP file using glob
     with zipfile.ZipFile(submission_file, 'w', zipfile.ZIP_DEFLATED) as zipf:
