@@ -15,6 +15,7 @@
 데이콘
 
 [Project Structure]
+```
 project_root/
 │
 ├── data/
@@ -44,3 +45,4 @@ project_root/
 │
 ├── requirements.txt
 └── README.md
+```
