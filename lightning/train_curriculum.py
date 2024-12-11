@@ -43,8 +43,8 @@ def parse_args1():
     parser.add_argument('--resume', type=str, default='', help='모델 학습을 Resume하려면 Model 주소를 입력하세요')
     parser.add_argument('--wandb_project', type=str, default='Image-Inpainting', help='WandB Project 이름')
     parser.add_argument('--wandb_entity', type=str, default='alexseo-inha-university', help='WandB Entity 이름')
-    parser.add_argument('--wandb_run_name', type=str, default='CURRICULUM', help='WandB Run name 설정')
-    parser = parser.parse_args1()
+    parser.add_argument('--wandb_run_name', type=str, default='CURRICULUM_LOCAL', help='WandB Run name 설정')
+    parser = parser.parse_args()
     
     return parser
 
@@ -119,11 +119,11 @@ def parse_args2():
     parser.add_argument('--image_std', type=float, default=0.225, help='Image pixel의 std value')
     parser.add_argument('--num_epoch', type=int, default=7, help='Epoch 수 설정')
     parser.add_argument('--seed', type=int, default=42, help='Seed 설정')
-    parser.add_argument('--resume', type=str, default='./checkpoint/curriculum1Q', help='모델 학습을 Resume하려면 Model 주소를 입력하세요')
+    parser.add_argument('--resume', type=str, default='./checkpoint/curriculum1Q.ckpt', help='모델 학습을 Resume하려면 Model 주소를 입력하세요')
     parser.add_argument('--wandb_project', type=str, default='Image-Inpainting', help='WandB Project 이름')
     parser.add_argument('--wandb_entity', type=str, default='alexseo-inha-university', help='WandB Entity 이름')
     parser.add_argument('--wandb_run_name', type=str, default='CURRICULUM', help='WandB Run name 설정')
-    parser = parser.parse_args2()
+    parser = parser.parse_args()
     
     return parser
 
@@ -191,11 +191,11 @@ def parse_args3():
     parser.add_argument('--image_std', type=float, default=0.225, help='Image pixel의 std value')
     parser.add_argument('--num_epoch', type=int, default=6, help='Epoch 수 설정')
     parser.add_argument('--seed', type=int, default=42, help='Seed 설정')
-    parser.add_argument('--resume', type=str, default='./checkpoint/curriculum2Q', help='모델 학습을 Resume하려면 Model 주소를 입력하세요')
+    parser.add_argument('--resume', type=str, default='./checkpoint/curriculum2Q.ckpt', help='모델 학습을 Resume하려면 Model 주소를 입력하세요')
     parser.add_argument('--wandb_project', type=str, default='Image-Inpainting', help='WandB Project 이름')
     parser.add_argument('--wandb_entity', type=str, default='alexseo-inha-university', help='WandB Entity 이름')
     parser.add_argument('--wandb_run_name', type=str, default='CURRICULUM', help='WandB Run name 설정')
-    parser = parser.parse_args3()
+    parser = parser.parse_args()
     
     return parser
 
@@ -263,11 +263,11 @@ def parse_args4():
     parser.add_argument('--image_std', type=float, default=0.225, help='Image pixel의 std value')
     parser.add_argument('--num_epoch', type=int, default=4, help='Epoch 수 설정')
     parser.add_argument('--seed', type=int, default=42, help='Seed 설정')
-    parser.add_argument('--resume', type=str, default='./checkpoint/curriculum3Q', help='모델 학습을 Resume하려면 Model 주소를 입력하세요')
+    parser.add_argument('--resume', type=str, default='./checkpoint/curriculum3Q.ckpt', help='모델 학습을 Resume하려면 Model 주소를 입력하세요')
     parser.add_argument('--wandb_project', type=str, default='Image-Inpainting', help='WandB Project 이름')
     parser.add_argument('--wandb_entity', type=str, default='alexseo-inha-university', help='WandB Entity 이름')
     parser.add_argument('--wandb_run_name', type=str, default='CURRICULUM', help='WandB Run name 설정')
-    parser = parser.parse_args4()
+    parser = parser.parse_args()
     
     return parser
 
