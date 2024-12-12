@@ -66,10 +66,8 @@ def main():
     trainer = L.Trainer(max_epochs=100, precision='bf16-mixed', callbacks=[checkpoint_callback, earlystopping_callback], detect_anomaly=False, inference_mode='predict')
     predictions = trainer.predict(lit_ir_model, test_dataloader)
     predictions = np.concatenate(predictions)
-    current_time = time.strftime("%m-%d_%H-%M-%S")
-    submission_dir = os.path.join(args.submission_dir, current_time)
     submission_file = f'{args.submission_dir}.zip'
-    os.makedirs(submission_dir, exist_ok=True)
+    os.makedirs(args.submission_dir, exist_ok=True)
 
     for idx, row in tqdm(test_df.iterrows(), total=len(test_df)):
         # row['input_image_path']에서 경로 중복 방지
@@ -80,8 +78,8 @@ def main():
 
     # Step 3: Compress the directory into a ZIP file using glob
     with zipfile.ZipFile(submission_file, 'w', zipfile.ZIP_DEFLATED) as zipf:
-        for file_path in glob(f"{submission_dir}/*.png"):
-            arcname = os.path.relpath(file_path, submission_dir)
+        for file_path in glob(f"{args.submission_dir}/*.png"):
+            arcname = os.path.relpath(file_path, args.submission_dir)
             zipf.write(file_path, arcname)
     print('Submission saved successfully!')
 
