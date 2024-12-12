@@ -10,10 +10,8 @@ import lightning as L
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 from utils.dataset import CustomImageDataset, CollateFn
 import pandas as pd
-from torch.utils.data import Dataset, DataLoader
-import time
+from torch.utils.data import DataLoader
 import segmentation_models_pytorch as smp
-import torch
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Image_Inpainting_Restoration')

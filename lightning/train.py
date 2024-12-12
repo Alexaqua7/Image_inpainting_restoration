@@ -1,15 +1,12 @@
 import argparse
 import lightning as L
-import torch
-import numpy as np
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 import segmentation_models_pytorch as smp
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
-from utils.split import stratified_split_dataset, split_dataset
+from utils.split import stratified_split_dataset
 import wandb
 import pandas as pd
 from utils.dataset import CollateFn
-from torchvision import transforms
 
 # 1분기 데이터셋
 from utils.dataset_1Q import StratifiedImageDataset as StratifiedImageDataset1Q

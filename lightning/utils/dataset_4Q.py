@@ -7,144 +7,34 @@ from polygenerator import (
 import skimage
 from PIL import Image
 import numpy as np
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 import os
-from skimage.draw import disk
 import torch
 import skimage.draw
 
-# 원을 그리는 함수
-def random_circle(radius, center=None):
-    """
-    원을 생성하는 함수입니다.
-    :param radius: 원의 반지름
-    :param center: 원의 중심 좌표 (없으면 이미지 중앙에 원을 생성)
-    :return: 원형 mask (numpy array)
-    """
-    height, width = 256, 256  # 예시로 256x256 크기의 이미지를 사용
-    if center is None:
-        center = (width // 2, height // 2)  # 이미지의 중앙에 원을 생성
-    
-    # 원을 그리기
-    rr, cc = disk(center, radius, shape=(height, width))
-    
-    # 원형 mask 생성
-    mask = np.zeros((height, width), dtype=np.uint8)
-    mask[rr, cc] = 1
-    
-    return mask
-
-class CustomImageDataset(Dataset):
-    def __init__(self, df, data_dir='../../data/train_gt', mode='train', min_polygon_bbox_size=50):
-        self.df = df
-        self.data_dir = data_dir
-        self.mode = mode
-        self.min_polygon_bbox_size = min_polygon_bbox_size
-
-    def __len__(self):
-        return len(self.df)
-
-    def __getitem__(self, idx):
-        # Get image path and label
-        img_path = self.df.iloc[idx, 0].split('/')[-1]  # Assuming first column is the path
-        img_path = os.path.join(self.data_dir, img_path)
-        
-        # Apply augmentation if in training mode
-        if self.mode == 'train':
-            image = Image.open(img_path)
-            image_input = get_input_image(image, self.min_polygon_bbox_size)
-            return image_input
-
-        elif self.mode == 'valid':
-            image_input = self.load_input_image(img_path)
-            return image_input
-        elif self.mode == 'test':
-            image = Image.open(img_path).convert('L')
-            return {
-                'image_gray_masked':image
-            }
-
-    def load_input_image(self, img_input_path):
-        image_input = np.load(img_input_path, allow_pickle=True)
-        return image_input.item()
-
-def get_input_image(image, min_polygon_bbox_size=50):
-    '''
-    이미지를 로드하는 함수입니다
-    Return
-    image_gt: 컬러로 복원된 ground truth
-    mask: mask가 있는 컬러 이미지
-    image_gray: 흑백의 ground truth 이미지
-    image_gray_masked: mask가 있는 흑백 이미지
-    '''
-    width, height = image.size
-    while True:
-        bbox_x1 = random.randint(0, width-min_polygon_bbox_size)
-        bbox_y1 = random.randint(0, height-min_polygon_bbox_size)
-        bbox_x2 = random.randint(bbox_x1, width)  # Ensure width > 10
-        bbox_y2 = random.randint(bbox_y1, height)  # Ensure height > 10
-        if (bbox_x2-bbox_x1)<min_polygon_bbox_size or (bbox_y2-bbox_y1)<min_polygon_bbox_size:
-            continue
-        
-        mask_bbox = [bbox_x1, bbox_y1, bbox_x2, bbox_y2]
-        mask_width = bbox_x2-bbox_x1
-        mask_height = bbox_y2-bbox_y1
-    
-        num_points = random.randint(3,20)
-        polygon_func = random.choice([
-            random_polygon,
-            random_star_shaped_polygon,
-            random_convex_polygon
-        ])
-        polygon = polygon_func(num_points=num_points) #scaled 0~1
-        polygon = [(round(r*mask_width), round(c*mask_height)) for r,c in polygon]
-        polygon_mask = skimage.draw.polygon2mask((mask_width, mask_height), polygon)
-        if np.sum(polygon_mask)>(min_polygon_bbox_size//2)**2:
-            break
-    full_image_mask = np.zeros((width, height), dtype=np.uint8)
-    full_image_mask[bbox_x1:bbox_x2, bbox_y1:bbox_y2] = polygon_mask
-    
-    image_gray = image.convert('L')
-    image_gray_array = np.array(image_gray)  # Convert to numpy array for manipulation
-    random_color = random.randint(0, 100)  # Random grayscale color
-    image_gray_array[full_image_mask == 1] = random_color
-    image_gray_masked = Image.fromarray(image_gray_array)
-
-    return {
-        'image_gt':image,
-        'mask':full_image_mask,
-        'image_gray':image_gray,
-        'image_gray_masked':image_gray_masked
-    }
-
 class StratifiedImageDataset(Dataset):
-    def __init__(self, df, data_dir='../../data/train_gt', mode='train', min_polygon_bbox_size=50, max_polygon_bbox_size=100, pct=0.1, max_points=20, transforms=None):
+    def __init__(self, df, data_dir='../../data/train_gt', mode='train', min_polygon_bbox_size=50, max_polygon_bbox_size=100, max_points=20):
         self.df = df
         self.data_dir = data_dir
         self.mode = mode
         self.min_polygon_bbox_size = min_polygon_bbox_size
         self.max_polygon_bbox_size = max_polygon_bbox_size
-        self.updated_min_size = min_polygon_bbox_size
         self.updated_max_size = min_polygon_bbox_size
-        self.pct = pct
         self.max_points = max_points
         self.updated_points = max_points
-        self.transform = transforms
 
     def __len__(self):
         return len(self.df)
 
     def __getitem__(self, idx):
-        # Get image path and label
-        img_path = self.df.iloc[idx, 0].split('/')[-1]  # Assuming first column is the path
+        img_path = self.df.iloc[idx, 0].split('/')[-1]
         img_path = os.path.join(self.data_dir, img_path)
         
-        # Apply augmentation if in training mode
         if self.mode == 'train':
             image = Image.open(img_path)
             image_input = get_stratified_input_image(
                 image, 
-                min_polygon_bbox_size=self.updated_min_size, 
+                min_polygon_bbox_size=self.min_polygon_bbox_size, 
                 max_polygon_bbox_size=self.max_polygon_bbox_size,
                 max_points=self.updated_points
             )
@@ -165,19 +55,15 @@ class StratifiedImageDataset(Dataset):
         return image_input.item()
     
     def update_bbox_size(self, epoch):
-    # pct에 따른 에포크 간격 계산
-        update_interval = 2  # 예: pct=0.1, num_epoch=50 -> update_interval=5
+        update_interval = 2
 
-        # update_interval 간격에 해당하는 에포크에서만 업데이트 수행
         if epoch % update_interval != 0:
-            return  # 조건에 맞지 않으면 업데이트 건너뜀
+            return
 
         progress = epoch / 20
 
-        # 새로운 min/max 크기 계산
         new_max_size = self.updated_max_size + 50
-        
-        # 크기 업데이트
+
         self.updated_max_size = min(new_max_size, self.max_polygon_bbox_size)
         self.updated_points = min(self.max_points, max(3, int(self.max_points*progress)))
 
@@ -193,10 +79,10 @@ def get_stratified_input_image(image, min_polygon_bbox_size=50, max_polygon_bbox
     '''
     width, height = image.size
     while True:
-        bbox_x1 = random.randint(0, width-min_polygon_bbox_size) # x1의 좌표가 0 미만이 되지 않도록 조정
-        bbox_y1 = random.randint(0, height-min_polygon_bbox_size) # y1의 좌표가 0 미만이 되지 않도록 조정
-        bbox_x2 = random.randint(bbox_x1, width)  # Ensure width > 10
-        bbox_y2 = random.randint(bbox_y1, height)  # Ensure height > 10
+        bbox_x1 = random.randint(0, width-min_polygon_bbox_size)
+        bbox_y1 = random.randint(0, height-min_polygon_bbox_size)
+        bbox_x2 = random.randint(bbox_x1, width)
+        bbox_y2 = random.randint(bbox_y1, height)
         if (bbox_x2-bbox_x1)<min_polygon_bbox_size or (bbox_y2-bbox_y1)<min_polygon_bbox_size or (bbox_x2-bbox_x1)>max_polygon_bbox_size or (bbox_y2-bbox_y1)>max_polygon_bbox_size:
             continue
         
@@ -214,7 +100,7 @@ def get_stratified_input_image(image, min_polygon_bbox_size=50, max_polygon_bbox
                 random_star_shaped_polygon,
                 random_convex_polygon,
             ])
-        polygon = polygon_func(num_points=num_points) #scaled 0~1
+        polygon = polygon_func(num_points=num_points)
         polygon = [(round(r*mask_width), round(c*mask_height)) for r,c in polygon]
         polygon_mask = skimage.draw.polygon2mask((mask_width, mask_height), polygon)
         if np.sum(polygon_mask)>(min_polygon_bbox_size//2)**2:
@@ -223,8 +109,8 @@ def get_stratified_input_image(image, min_polygon_bbox_size=50, max_polygon_bbox
     full_image_mask[bbox_x1:bbox_x2, bbox_y1:bbox_y2] = polygon_mask
     
     image_gray = image.convert('L')
-    image_gray_array = np.array(image_gray)  # Convert to numpy array for manipulation
-    random_color = random.randint(0, 100)  # Random grayscale color
+    image_gray_array = np.array(image_gray)
+    random_color = random.randint(0, 100)
     image_gray_array[full_image_mask == 1] = random_color
     image_gray_masked = Image.fromarray(image_gray_array)
 
@@ -244,14 +130,12 @@ class CollateFn:
 
     def __call__(self, examples):
         if self.mode =='train' or self.mode=='valid':
-            # Initialize lists to store each component of the batch
             masks= []
             images_gray = []
             images_gray_masked = []
             images_gt = []
     
             for example in examples:
-                # Assuming each example is a dictionary with keys 'mask', 'image_gray', 'image_gray_masked', 'image_gt'
                 masks.append(example['mask'])
                 images_gray.append(self.normalize_image(example['image_gray']))
                 images_gray_masked.append(self.normalize_image(example['image_gray_masked']))
