@@ -10,6 +10,7 @@ import wandb
 import pandas as pd
 from utils.dataset import CollateFn
 from torchvision import transforms
+from utils.utils import set_seed, seed_worker
 
 # 1분기 데이터셋
 from utils.dataset_1Q import StratifiedImageDataset as StratifiedImageDataset1Q
@@ -38,18 +39,19 @@ def parse_args1():
     parser.add_argument('--val_data_dir', type=str, default=f'../../data/valid_input', help='Validation data 경로 설정')
     parser.add_argument('--image_mean', type=float, default=0.5, help='Image pixel의 mean value')
     parser.add_argument('--image_std', type=float, default=0.225, help='Image pixel의 std value')
-    parser.add_argument('--num_epoch', type=int, default=8, help='Epoch 수 설정')
+    parser.add_argument('--num_epoch', type=int, default=11, help='Epoch 수 설정')
     parser.add_argument('--seed', type=int, default=42, help='Seed 설정')
     parser.add_argument('--resume', type=str, default='', help='모델 학습을 Resume하려면 Model 주소를 입력하세요')
     parser.add_argument('--wandb_project', type=str, default='Image-Inpainting', help='WandB Project 이름')
     parser.add_argument('--wandb_entity', type=str, default='alexseo-inha-university', help='WandB Entity 이름')
-    parser.add_argument('--wandb_run_name', type=str, default='CURRICULUM_LOCAL', help='WandB Run name 설정')
+    parser.add_argument('--wandb_run_name', type=str, default='CURRICULUM_LOCAL_SEED', help='WandB Run name 설정')
     parser = parser.parse_args()
     
     return parser
 
 def main1():
     args = parse_args1()
+    g = set_seed(args.seed)
     L.seed_everything(args.seed)
     train_df = pd.read_csv(args.train_df)
     train_fold_df, valid_fold_df = stratified_split_dataset(args.seed, args.n_split, train_df, args.train_data_dir, args.val_data_dir, 50, 300)
@@ -64,7 +66,7 @@ def main1():
     train_dataset = StratifiedImageDataset1Q(train_fold_df, data_dir=args.train_data_dir, mode='train',min_polygon_bbox_size=args.min_polygon_bbox_size, max_polygon_bbox_size=args.max_polygon_bbox_size, max_points=16,)
     valid_dataset = StratifiedImageDataset1Q(valid_fold_df, data_dir=args.val_data_dir, mode='valid')
 
-    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True,collate_fn=CollateFn(mode='train'))
+    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True,collate_fn=CollateFn(mode='train'), worker_init_fn=seed_worker, generator=g)
     valid_dataloader = DataLoader(valid_dataset, batch_size=args.batch_size*2, shuffle=False, num_workers=4, pin_memory=True,collate_fn=CollateFn(mode='valid'), persistent_workers=True)
 
     # gray masked -> gray restoration
@@ -117,18 +119,19 @@ def parse_args2():
     parser.add_argument('--val_data_dir', type=str, default=f'../../data/valid_input', help='Validation data 경로 설정')
     parser.add_argument('--image_mean', type=float, default=0.5, help='Image pixel의 mean value')
     parser.add_argument('--image_std', type=float, default=0.225, help='Image pixel의 std value')
-    parser.add_argument('--num_epoch', type=int, default=7, help='Epoch 수 설정')
+    parser.add_argument('--num_epoch', type=int, default=8, help='Epoch 수 설정')
     parser.add_argument('--seed', type=int, default=42, help='Seed 설정')
-    parser.add_argument('--resume', type=str, default='./checkpoint/curriculum1Q.ckpt', help='모델 학습을 Resume하려면 Model 주소를 입력하세요')
+    parser.add_argument('--resume', type=str, default='./checkpoint/curriculum1Q.ckpt', help='모델 학습을 Resume하려면 Model 주소를 입력하세요') #임시 변경
     parser.add_argument('--wandb_project', type=str, default='Image-Inpainting', help='WandB Project 이름')
     parser.add_argument('--wandb_entity', type=str, default='alexseo-inha-university', help='WandB Entity 이름')
-    parser.add_argument('--wandb_run_name', type=str, default='CURRICULUM', help='WandB Run name 설정')
+    parser.add_argument('--wandb_run_name', type=str, default='CURRICULUM_LOCAL', help='WandB Run name 설정')
     parser = parser.parse_args()
     
     return parser
 
 def main2():
     args = parse_args2()
+    g = set_seed(args.seed)
     L.seed_everything(args.seed)
     train_df = pd.read_csv(args.train_df)
     train_fold_df, valid_fold_df = stratified_split_dataset(args.seed, args.n_split, train_df, args.train_data_dir, args.val_data_dir, 50, 300)
@@ -136,7 +139,7 @@ def main2():
     train_dataset = StratifiedImageDataset2Q(train_fold_df, data_dir=args.train_data_dir, mode='train',min_polygon_bbox_size=args.min_polygon_bbox_size, max_polygon_bbox_size=args.max_polygon_bbox_size, max_points=16,)
     valid_dataset = StratifiedImageDataset2Q(valid_fold_df, data_dir=args.val_data_dir, mode='valid')
 
-    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True,collate_fn=CollateFn(mode='train'))
+    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True,collate_fn=CollateFn(mode='train'), worker_init_fn=seed_worker, generator=g)
     valid_dataloader = DataLoader(valid_dataset, batch_size=args.batch_size*2, shuffle=False, num_workers=4, pin_memory=True,collate_fn=CollateFn(mode='valid'), persistent_workers=True)
 
     # gray masked -> gray restoration
@@ -176,7 +179,7 @@ def main2():
 
     trainer = L.Trainer(max_epochs=args.num_epoch, precision='bf16-mixed', callbacks=[checkpoint_callback, earlystopping_callback], detect_anomaly=False)
 
-    trainer.fit(lit_ir_model, train_dataloader, valid_dataloader)#, ckpt_path= args.resume if args.resume is not None else None)
+    trainer.fit(lit_ir_model, train_dataloader, valid_dataloader, ckpt_path= args.resume if args.resume is not None else None)
 
 def parse_args3():
     parser = argparse.ArgumentParser(description='Image_Inpainting_Restoration')
@@ -189,7 +192,7 @@ def parse_args3():
     parser.add_argument('--val_data_dir', type=str, default=f'../../data/valid_input', help='Validation data 경로 설정')
     parser.add_argument('--image_mean', type=float, default=0.5, help='Image pixel의 mean value')
     parser.add_argument('--image_std', type=float, default=0.225, help='Image pixel의 std value')
-    parser.add_argument('--num_epoch', type=int, default=6, help='Epoch 수 설정')
+    parser.add_argument('--num_epoch', type=int, default=8, help='Epoch 수 설정')
     parser.add_argument('--seed', type=int, default=42, help='Seed 설정')
     parser.add_argument('--resume', type=str, default='./checkpoint/curriculum2Q.ckpt', help='모델 학습을 Resume하려면 Model 주소를 입력하세요')
     parser.add_argument('--wandb_project', type=str, default='Image-Inpainting', help='WandB Project 이름')
@@ -201,6 +204,7 @@ def parse_args3():
 
 def main3():
     args = parse_args3()
+    g = set_seed(args.seed)
     L.seed_everything(args.seed)
     train_df = pd.read_csv(args.train_df)
     train_fold_df, valid_fold_df = stratified_split_dataset(args.seed, args.n_split, train_df, args.train_data_dir, args.val_data_dir, 50, 300)
@@ -208,7 +212,7 @@ def main3():
     train_dataset = StratifiedImageDataset3Q(train_fold_df, data_dir=args.train_data_dir, mode='train',min_polygon_bbox_size=args.min_polygon_bbox_size, max_polygon_bbox_size=args.max_polygon_bbox_size, max_points=16,)
     valid_dataset = StratifiedImageDataset3Q(valid_fold_df, data_dir=args.val_data_dir, mode='valid')
 
-    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True,collate_fn=CollateFn(mode='train'))
+    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True,collate_fn=CollateFn(mode='train'), worker_init_fn=seed_worker, generator=g)
     valid_dataloader = DataLoader(valid_dataset, batch_size=args.batch_size*2, shuffle=False, num_workers=4, pin_memory=True,collate_fn=CollateFn(mode='valid'), persistent_workers=True)
 
     # gray masked -> gray restoration
@@ -261,7 +265,7 @@ def parse_args4():
     parser.add_argument('--val_data_dir', type=str, default=f'../../data/valid_input', help='Validation data 경로 설정')
     parser.add_argument('--image_mean', type=float, default=0.5, help='Image pixel의 mean value')
     parser.add_argument('--image_std', type=float, default=0.225, help='Image pixel의 std value')
-    parser.add_argument('--num_epoch', type=int, default=15, help='Epoch 수 설정')
+    parser.add_argument('--num_epoch', type=int, default=6, help='Epoch 수 설정')
     parser.add_argument('--seed', type=int, default=42, help='Seed 설정')
     parser.add_argument('--resume', type=str, default='./checkpoint/curriculum3Q.ckpt', help='모델 학습을 Resume하려면 Model 주소를 입력하세요')
     parser.add_argument('--wandb_project', type=str, default='Image-Inpainting', help='WandB Project 이름')
@@ -273,6 +277,7 @@ def parse_args4():
 
 def main4():
     args = parse_args4()
+    g = set_seed(args.seed)
     L.seed_everything(args.seed)
     train_df = pd.read_csv(args.train_df)
     train_fold_df, valid_fold_df = stratified_split_dataset(args.seed, args.n_split, train_df, args.train_data_dir, args.val_data_dir, 50, 300)
@@ -280,7 +285,7 @@ def main4():
     train_dataset = StratifiedImageDataset4Q(train_fold_df, data_dir=args.train_data_dir, mode='train',min_polygon_bbox_size=args.min_polygon_bbox_size, max_polygon_bbox_size=args.max_polygon_bbox_size, max_points=16,)
     valid_dataset = StratifiedImageDataset4Q(valid_fold_df, data_dir=args.val_data_dir, mode='valid')
 
-    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True,collate_fn=CollateFn(mode='train'))
+    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True,collate_fn=CollateFn(mode='train'), worker_init_fn=seed_worker, generator=g)
     valid_dataloader = DataLoader(valid_dataset, batch_size=args.batch_size*2, shuffle=False, num_workers=4, pin_memory=True,collate_fn=CollateFn(mode='valid'), persistent_workers=True)
 
     # gray masked -> gray restoration
